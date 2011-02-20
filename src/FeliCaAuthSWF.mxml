@@ -25,6 +25,7 @@
 			import mx.utils.SHA256;
 			import flash.external.*;
 			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
 			
 			private var fc:FeliCaControl = new FeliCaControl();
 			
@@ -33,11 +34,15 @@
 			private var pollingIntervalId:uint = 0;
 
 			private var exitPollingFlag:Boolean = false;
+			
+			private var serverToken:String;
 
 			private function initApp():void
 			{
 				fc.addEventListener(OpenStatusEvent.OPEN_COMPLETE, onOpenComplete);
-			    fc.addEventListener(OpenStatusEvent.OPEN_FAILURE, onOpenFailure);		
+			    fc.addEventListener(OpenStatusEvent.OPEN_FAILURE, onOpenFailure);
+			    
+			    serverToken = FlexGlobals.topLevelApplication.parameters.serverToken;		
 
 			    fc.open(10250);
 			}
@@ -111,14 +116,19 @@
 					pmmByteArray.writeUTFBytes(response.pmm);
 					var pmmHash:String = SHA256.computeDigest(pmmByteArray);
 					
-					var felicaAuthIdentifier:String = idmHash + pmmHash;
+					var felicaAuthIdentifier:String = idmHash + pmmHash + serverToken;
 					
-					setAuthIdentifier(felicaAuthIdentifier);
+					var felicaAuthIdentifierByteArray:ByteArray = new ByteArray();
+					felicaAuthIdentifierByteArray.writeUTFBytes(felicaAuthIdentifier);
+					var felicaAuthIdentifierHash:String = SHA256.computeDigest(felicaAuthIdentifierByteArray);
+					
+					setAuthIdentifier(felicaAuthIdentifierHash);
 					
 					displayMessage(	"Found FeliCa \n" +
 											"  idm = " + response.idm + "\n" +
 											"  pmm = " + response.pmm + "\n" +
-											"  FeliCaAuthIdentifier = " + felicaAuthIdentifier);
+											"  serverToken = " + serverToken + "\n" +
+											"  FeliCaAuthIdentifier = " + felicaAuthIdentifierHash);
 					this.nextProcess();
 				}
 				else if (evt.object is FeliCaCloseReaderWriterResponse)
